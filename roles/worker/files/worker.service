@@ -1,0 +1,14 @@
+[Unit]
+Description=Worker (Java)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/worker
+EnvironmentFile=/etc/worker.env
+ExecStart=/usr/bin/java -jar /opt/worker/target/worker-jar-with-dependencies.jar
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

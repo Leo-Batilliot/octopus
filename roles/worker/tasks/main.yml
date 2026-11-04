@@ -1,0 +1,47 @@
+---
+- name: Upload and extract the worker service
+  ansible.builtin.unarchive:
+    src: "{{ playbook_dir }}/worker.tar"
+    dest: /opt
+    remote_src: false
+    creates: /opt/worker/pom.xml
+
+- name: Set the application directory permissions
+  ansible.builtin.file:
+    path: /opt/worker
+    state: directory
+    mode: "0755"
+
+- name: Install the JDK 21 and Maven
+  ansible.builtin.apt:
+    name:
+      - openjdk-21-jdk-headless
+      - maven
+    state: present
+    update_cache: true
+
+- name: Build the worker fat jar (first run only)
+  ansible.builtin.command:
+    cmd: mvn -B -f /opt/worker/pom.xml clean package
+    creates: /opt/worker/target/worker-jar-with-dependencies.jar
+
+- name: Deploy the environment file
+  ansible.builtin.template:
+    src: worker.env.j2
+    dest: /etc/worker.env
+    mode: "0600"
+  notify: Restart worker
+
+- name: Install the systemd unit
+  ansible.builtin.copy:
+    src: worker.service
+    dest: /etc/systemd/system/worker.service
+    mode: "0644"
+  notify: Restart worker
+
+- name: Enable and start the worker service
+  ansible.builtin.systemd_service:
+    name: worker
+    enabled: true
+    state: started
+    daemon_reload: true

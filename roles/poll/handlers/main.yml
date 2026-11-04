@@ -1,0 +1,6 @@
+---
+- name: Restart poll
+  ansible.builtin.systemd_service:
+    name: poll
+    state: restarted
+    daemon_reload: true

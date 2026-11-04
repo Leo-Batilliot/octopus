@@ -1,0 +1,36 @@
+---
+- name: Base configuration on every machine
+  hosts: all
+  become: true
+  roles:
+    - base
+
+- name: Redis datastore
+  hosts: redis
+  become: true
+  roles:
+    - redis
+
+- name: PostgreSQL database
+  hosts: postgresql
+  become: true
+  roles:
+    - postgresql
+
+- name: Poll web client (Flask)
+  hosts: poll
+  become: true
+  roles:
+    - poll
+
+- name: Worker (Java)
+  hosts: worker
+  become: true
+  roles:
+    - worker
+
+- name: Result web client (Node.js)
+  hosts: result
+  become: true
+  roles:
+    - result

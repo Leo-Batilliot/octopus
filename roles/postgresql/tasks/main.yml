@@ -1,0 +1,111 @@
+---
+- name: Install prerequisites (incl. psycopg2 required by the postgresql modules)
+  ansible.builtin.apt:
+    name:
+      - curl
+      - ca-certificates
+      - gnupg
+      - python3-psycopg2
+      - python3-debian
+    state: present
+    update_cache: true
+
+- name: Ensure the apt keyrings directory exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: Download the PostgreSQL (PGDG) signing key
+  ansible.builtin.get_url:
+    url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
+    dest: /etc/apt/keyrings/postgresql.asc
+    mode: "0644"
+
+- name: Add the official PostgreSQL APT repository (PGDG)
+  ansible.builtin.deb822_repository:
+    name: pgdg
+    types: deb
+    uris: https://apt.postgresql.org/pub/repos/apt
+    suites: "{{ postgresql_pgdg_suite }}"
+    components: main
+    signed_by: /etc/apt/keyrings/postgresql.asc
+    enabled: true
+    state: present
+
+- name: Install PostgreSQL
+  ansible.builtin.apt:
+    name:
+      - "postgresql-{{ postgresql_version }}"
+      - "postgresql-client-{{ postgresql_version }}"
+    state: present
+    update_cache: true
+
+- name: Ensure PostgreSQL is enabled and started
+  ansible.builtin.systemd_service:
+    name: postgresql
+    enabled: true
+    state: started
+
+- name: Make PostgreSQL listen on the network
+  ansible.builtin.copy:
+    src: listen.conf
+    dest: "/etc/postgresql/{{ postgresql_version }}/main/conf.d/listen.conf"
+    owner: postgres
+    group: postgres
+    mode: "0640"
+  notify: Restart postgresql
+
+- name: Deploy pg_hba.conf (client authentication rules)
+  ansible.builtin.copy:
+    src: pg_hba.conf
+    dest: "/etc/postgresql/{{ postgresql_version }}/main/pg_hba.conf"
+    owner: postgres
+    group: postgres
+    mode: "0640"
+  notify: Restart postgresql
+
+- name: Apply configuration changes before touching the database
+  ansible.builtin.meta: flush_handlers
+
+- name: Create the paul database user with limited permissions
+  community.postgresql.postgresql_user:
+    name: "{{ postgres_user }}"
+    password: "{{ postgres_password }}"
+    role_attr_flags: NOSUPERUSER,NOCREATEROLE,NOCREATEDB
+  become: true
+  become_user: postgres
+
+- name: Create the paul database owned by paul
+  community.postgresql.postgresql_db:
+    name: "{{ postgres_db }}"
+    owner: "{{ postgres_user }}"
+  become: true
+  become_user: postgres
+
+- name: Upload the database schema
+  ansible.builtin.copy:
+    src: schema.sql
+    dest: /var/lib/postgresql/schema.sql
+    owner: postgres
+    group: postgres
+    mode: "0640"
+
+- name: Check whether the votes table already exists
+  community.postgresql.postgresql_query:
+    login_db: "{{ postgres_db }}"
+    login_host: 127.0.0.1
+    login_user: "{{ postgres_user }}"
+    login_password: "{{ postgres_password }}"
+    query: "SELECT to_regclass('public.votes') AS tbl"
+  register: postgresql_votes_table
+  changed_when: false
+
+- name: Load the database schema (first run only)
+  community.postgresql.postgresql_script:
+    login_db: "{{ postgres_db }}"
+    login_host: 127.0.0.1
+    login_user: "{{ postgres_user }}"
+    login_password: "{{ postgres_password }}"
+    path: /var/lib/postgresql/schema.sql
+  when: postgresql_votes_table.query_result[0].tbl | default(None) is none

@@ -1,0 +1,15 @@
+# Local inventory with real machine IPs — must never be versioned
+production
+
+.*
+!.gitignore
+
+# Ansible local cache (collections/roles/modules downloaded by ansible-galaxy)
+.ansible/
+
+# Ansible run artifacts
+*.retry
+
+# Python bytecode
+__pycache__/
+*.pyc

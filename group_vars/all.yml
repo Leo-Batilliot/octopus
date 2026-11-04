@@ -1,0 +1,18 @@
+---
+postgres_user: paul
+postgres_db: paul
+postgres_port: 5432
+
+postgresql_version: 16
+postgresql_pgdg_suite: "{{ ansible_distribution_release }}-pgdg"
+
+redis_host: "{{ hostvars[groups['redis'][0]].ansible_host | default(hostvars[groups['redis'][0]]['ansible_default_ipv4']['address']) }}"
+postgres_host: "{{ hostvars[groups['postgresql'][0]].ansible_host | default(hostvars[groups['postgresql'][0]]['ansible_default_ipv4']['address']) }}"
+
+postgres_password: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          66333361323066613534363034396134646339366264316434636239656266343832633838623638
+          6238343239336139306132303637353362636236646162330a653662666430653038636438356338
+          33333532396164306537643662393738373462356465363731636238306363356265383237383430
+          3132303630373731630a313761343137343165343262393032333564376137316634363664363331
+          65383030663566323730383164313131336430613433336131353031633862303733

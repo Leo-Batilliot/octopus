@@ -1,0 +1,47 @@
+---
+- name: Upload and extract the result service
+  ansible.builtin.unarchive:
+    src: "{{ playbook_dir }}/result.tar"
+    dest: /opt
+    remote_src: false
+    creates: /opt/result/server.js
+
+- name: Set the application directory permissions
+  ansible.builtin.file:
+    path: /opt/result
+    state: directory
+    mode: "0755"
+
+- name: Install Node.js and npm
+  ansible.builtin.apt:
+    name:
+      - nodejs
+      - npm
+    state: present
+    update_cache: true
+
+- name: Install Node.js dependencies
+  community.general.npm:
+    path: /opt/result
+    production: true
+
+- name: Deploy the environment file
+  ansible.builtin.template:
+    src: result.env.j2
+    dest: /etc/result.env
+    mode: "0600"
+  notify: Restart result
+
+- name: Install the systemd unit
+  ansible.builtin.copy:
+    src: result.service
+    dest: /etc/systemd/system/result.service
+    mode: "0644"
+  notify: Restart result
+
+- name: Enable and start the result service
+  ansible.builtin.systemd_service:
+    name: result
+    enabled: true
+    state: started
+    daemon_reload: true

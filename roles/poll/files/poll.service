@@ -1,0 +1,14 @@
+[Unit]
+Description=Poll web client (Flask)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/poll
+EnvironmentFile=/etc/poll.env
+ExecStart=/opt/poll/venv/bin/gunicorn --bind 0.0.0.0:80 wsgi:app
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

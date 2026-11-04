@@ -1,0 +1,14 @@
+[Unit]
+Description=Result web client (Node.js)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/result
+EnvironmentFile=/etc/result.env
+ExecStart=/usr/bin/node /opt/result/server.js
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

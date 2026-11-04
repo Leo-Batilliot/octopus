@@ -1,0 +1,54 @@
+---
+- name: Upload and extract the poll service
+  ansible.builtin.unarchive:
+    src: "{{ playbook_dir }}/poll.tar"
+    dest: /opt
+    remote_src: false
+    creates: /opt/poll/app.py
+
+- name: Set the application directory permissions
+  ansible.builtin.file:
+    path: /opt/poll
+    state: directory
+    mode: "0755"
+
+- name: Install Python and venv tooling
+  ansible.builtin.apt:
+    name:
+      - python3
+      - python3-venv
+      - python3-packaging
+    state: present
+    update_cache: true
+
+- name: Install Python dependencies in a virtualenv
+  ansible.builtin.pip:
+    requirements: /opt/poll/requirements.txt
+    virtualenv: /opt/poll/venv
+    virtualenv_command: /usr/bin/python3 -m venv
+
+- name: Install gunicorn in the virtualenv (production WSGI server on port 80)
+  ansible.builtin.pip:
+    name: gunicorn
+    virtualenv: /opt/poll/venv
+
+- name: Deploy the environment file
+  ansible.builtin.template:
+    src: poll.env.j2
+    dest: /etc/poll.env
+    mode: "0644"
+  notify: Restart poll
+
+- name: Install the systemd unit
+  ansible.builtin.copy:
+    src: poll.service
+    dest: /etc/systemd/system/poll.service
+    mode: "0644"
+  notify: Restart poll
+
+- name: Enable and start the poll service
+  ansible.builtin.systemd_service:
+    name: poll
+    enabled: true
+    state: started
+    daemon_reload: true
